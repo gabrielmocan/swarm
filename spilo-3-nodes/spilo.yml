@@ -1,0 +1,237 @@
+# docker compose file for running a 3-node PostgreSQL cluster
+# with 3-node etcd cluster as the DCS, pgpool as loadbalancer and pgbouncer as connection pooller
+version: "3.9"
+
+######################################################## INPUT DE DADOS ########################################################
+
+# Dados do cliente
+x-client_data: &client_data
+  SCOPE: ${SCOPE?Variable not set}
+  TZ: ${TZ?Variable not set}
+  # CLONE_METHOD: CLONE_WITH_WALE                   # Use this option for bootstraping from S3 backup instead of new clean cluster
+  # CLONE_SCOPE: ${CLONE_SCOPE?Variable not set}    # Define the clone scope to bootstrap from
+
+######################################################## BASE TEMPLATES ########################################################
+
+# S3 backup params
+x-walg_params: &walg_params
+  USE_WALG: 'true'
+  BACKUP_SCHEDULE: '00 00 * * *'  # This will do daily backups at 00:00 UTC
+  CRONTAB: "['0 * * * * envdir /run/etc/wal-e.d/env wal-g delete retain FIND_FULL 1 --confirm']"  # This will clean old backups hourly, increase FIND_FULL for more full backup states
+  WALG_COMPRESSION_METHOD: brotli
+  AWS_S3_FORCE_PATH_STYLE: &aws_s3_force_path_style 'true'
+  AWS_ACCESS_KEY_ID: &access_key ${S3_ACCESS_KEY?Variable not set}
+  AWS_SECRET_ACCESS_KEY: &secret_key ${S3_SECRET_KEY?Variable not set}
+  AWS_ENDPOINT: &aws_endpoint ${S3_ENDPOINT?Variable not set}
+  WAL_S3_BUCKET: &bucket ${S3_BUCKET?Variable not set}
+
+# S3 clone params -- These params will be used if CLONE_METHOD is enabled to bootstrap from previous S3 backup
+x-walg_clone: &walg_clone
+  CLONE_AWS_ACCESS_KEY_ID: *access_key
+  CLONE_AWS_SECRET_ACCESS_KEY: *secret_key
+  CLONE_AWS_S3_FORCE_PATH_STYLE: *aws_s3_force_path_style
+  CLONE_AWS_ENDPOINT: *aws_endpoint
+  CLONE_WAL_S3_BUCKET: *bucket
+  CLONE_TARGET_TIMELINE: latest # change this in case of need to go back to specific timeline during disaster recovery or bootstraping from s3
+
+# etcd template for 3-node cluster
+x-etcd_template: &etcd_template
+  image: gabemocan/swarm:spilo-pg14
+  environment:
+    <<: *client_data
+    ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+    ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+    ETCD_ADVERTISE_CLIENT_URLS: http://etcd1:2379,http://etcd2:2379,http://etcd3:2379
+    ETCD_INITIAL_CLUSTER: etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+    ETCD_INITIAL_CLUSTER_STATE: new
+    ETCD_INITIAL_CLUSTER_TOKEN: s3cr3t-t0k3n  # define a secret token here
+
+# spilo template for 3-node cluster
+x-spilo_template: &spilo_template
+  image: gabemocan/swarm:spilo-pg14
+  cap_add:
+    - SYS_NICE  # This adds NICE capabilities to container in order to smoothen process consumption during backup
+  environment:
+    <<: *client_data
+    <<: *walg_params
+    <<: *walg_clone
+    PGVERSION: "14" # Set PGVERSION, useful for in-place pg_upgrade
+    SPILO_PROVIDER: "local"
+    ENABLE_PG_MON: "true"
+    INITDB_LOCALE: en_US # Set accordingly 
+    SPILO_CONFIGURATION: # Custom pg_hba.conf file
+      "{postgresql: 
+        {pg_hba: [local all all trust,
+          local replication standby trust,
+          hostssl all all all md5,
+          hostssl replication standby all md5,
+          host all all all md5,
+          host all all all scram-sha-256]
+        }
+      }"
+  volumes:
+    - spilo_data:/home/postgres/pgdata
+    - type: tmpfs
+      target: /dev/shm
+      tmpfs:
+        size: 512000000 # This will increase shared memory of container to 512MB, a good value for postgres
+  networks:
+    - pgpool-network
+  stop_grace_period: 15m # gives time to container gracefully shutdown in case of SIGTERM
+  healthcheck:
+    test: pg_isready || exit 1
+    interval: 30s
+    timeout: 5s
+    start_period: 3h # gives time to container deploy in case of bootstrap from previous backup
+
+######################################################## DEPLOYMENT RULES ########################################################
+# 1st node deploy template
+x-deploy_node1: &deploy_node1
+  deploy:
+    placement:
+      constraints:
+        - node.hostname=={$DB_HOST_01?Undefined variable}
+
+# 2nd node deploy template
+x-deploy_node2: &deploy_node2
+  deploy:
+    placement:
+      constraints:
+        - node.hostname=={$DB_HOST_02?Undefined variable}
+
+# 3rd node deploy template
+x-deploy_node3: &deploy_node3
+  deploy:
+    placement:
+      constraints:
+        - node.hostname=={$DB_HOST_03?Undefined variable}
+
+######################################################## SERVICES DEFINITIONS ########################################################
+
+services:
+  etcd1:
+    <<: *etcd_template
+    <<: *deploy_node1
+    volumes:
+      - etcd_1_data:/home/postgres/etcd1.etcd
+    command: etcd -name etcd1 -initial-advertise-peer-urls http://etcd1:2380
+
+  etcd2:
+    <<: *etcd_template
+    <<: *deploy_node2
+    volumes:
+      - etcd_2_data:/home/postgres/etcd2.etcd
+    command: etcd -name etcd2 -initial-advertise-peer-urls http://etcd2:2380
+
+  etcd3:
+    <<: *etcd_template
+    <<: *deploy_node3
+    volumes:
+      - etcd_3_data:/home/postgres/etcd3.etcd
+    command: etcd -name etcd3 -initial-advertise-peer-urls http://etcd3:2380
+
+  spilo1:
+    <<: *spilo_template
+    <<: *deploy_node1
+    volumes:
+      - spilo_1_data:/home/postgres/pgdata/pgroot/data
+    hostname: spilo1
+
+  spilo2:
+    <<: *spilo_template
+    <<: *deploy_node2
+    volumes:
+      - spilo_2_data:/home/postgres/pgdata/pgroot/data
+    hostname: spilo2
+
+  spilo3:
+    <<: *spilo_template
+    <<: *deploy_node3
+    volumes:
+      - spilo_3_data:/home/postgres/pgdata/pgroot/data    
+    hostname: spilo3
+
+  pgpool:
+    image: gabemocan/swarm:pgpool-4
+    environment:
+      # Backend definition
+      PGPOOL_BACKEND_NODES: 0:spilo1:5432,1:spilo2:5432,2:spilo3:5432
+      PGPOOL_AUTO_FAILBACK: "yes"
+      PGPOOL_BACKEND_APPLICATION_NAMES: spilo1,spilo2,spilo3
+      # Authentication parameters
+      PGPOOL_SR_CHECK_USER: pgpool  # pgpool user has to be created on postgres and given pg_monitor permission, i.e: GRANT pg_monitor TO pgpool;
+      PGPOOL_SR_CHECK_PASSWORD: pgpool
+      PGPOOL_POSTGRES_USERNAME: pgpool
+      PGPOOL_POSTGRES_PASSWORD: pgpool
+      PGPOOL_ADMIN_USERNAME: pgpool
+      PGPOOL_ADMIN_PASSWORD: pgpool
+      PGPOOL_POSTGRES_CUSTOM_USERS: zabbix,grafana
+      PGPOOL_POSTGRES_CUSTOM_PASSWORDS: EQTL_DB,grafanaDB
+      # Health check failover parameters
+      PGPOOL_HEALTH_CHECK_PERIOD: 5
+      PGPOOL_HEALTH_CHECK_TIMEOUT: 3
+      PGPOOL_HEALTH_CHECK_MAX_RETRIES: 3
+      PGPOOL_HEALTH_CHECK_RETRY_DELAY: 0
+      PGPOOL_SR_CHECK_PERIOD: 10
+      # Pool parameters
+      PGPOOL_NUM_INIT_CHILDREN: 50
+      PGPOOL_MAX_POOL: 10
+      # Custom image options -- this will disable pgpool's connection pooling
+      PGPOOL_CONNECTION_CACHE: "no"
+    networks:
+      - pgpool-network
+    healthcheck: # this healthcheck is also responsible for detaching and reataching nodes
+      test: ["CMD", "/opt/bitnami/scripts/pgpool/healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      mode: global
+      update_config:
+        failure_action: rollback
+        order: start-first
+
+  pgbouncer:
+    image: gabemocan/swarm:pgbouncer-1
+    configs:
+      - source: pgbouncer-conf
+        target: /bitnami/pgbouncer/conf/pgbouncer.ini
+      - source: pgbouncer-userlist
+        target: /bitnami/pgbouncer/conf/userlist.txt
+    environment:
+      POSTGRESQL_HOST: pgpool
+      POSTGRESQL_PASSWORD: pgbouncer
+    networks:
+      - pgbouncer-network
+      - pgpool-network
+    healthcheck:
+      test: pg_isready -h localhost -U pgbouncer || exit 1
+      interval: 30s
+      timeout: 3s
+    deploy:
+      mode: global
+      update_config:
+        failure_action: rollback
+        order: start-first
+
+configs:
+  pgbouncer-conf: # database access are defined in this .ini
+    file: ./pgbouncer.ini
+    name: pgbouncer-conf-v1 # in need of change, alter .ini then change this name to v2 lets say in order to update the config
+  pgbouncer-userlist: # pgbouncer userlist (which clients will use to connect) is defined in this .txt
+    file: ./userlist.txt
+    name: pgbouncer-userlist-v1
+
+volumes:
+  etcd_1_data:
+  etcd_2_data:
+  etcd_3_data:
+  spilo_1_data:
+  spilo_2_data:
+  spilo_3_data:
+
+networks:
+  pgpool-network:
+  # this external network will be used by apps/clients to connect to the postgres cluster
+  pgbouncer-network:
+    external: true
