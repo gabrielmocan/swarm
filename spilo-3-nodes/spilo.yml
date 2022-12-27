@@ -90,21 +90,21 @@ x-deploy_node1: &deploy_node1
   deploy:
     placement:
       constraints:
-        - node.hostname=={$DB_HOST_01?Undefined variable}
+        - node.hostname==${DB_HOST_01?Undefined variable}
 
 # 2nd node deploy template
 x-deploy_node2: &deploy_node2
   deploy:
     placement:
       constraints:
-        - node.hostname=={$DB_HOST_02?Undefined variable}
+        - node.hostname==${DB_HOST_02?Undefined variable}
 
 # 3rd node deploy template
 x-deploy_node3: &deploy_node3
   deploy:
     placement:
       constraints:
-        - node.hostname=={$DB_HOST_03?Undefined variable}
+        - node.hostname==${DB_HOST_03?Undefined variable}
 
 ######################################################## SERVICES DEFINITIONS ########################################################
 
