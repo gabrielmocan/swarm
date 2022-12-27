@@ -223,9 +223,11 @@ configs:
     name: pgbouncer-userlist-v1
 
 volumes:
+  # it is prudent to store etcd volumes on external volumes just to facilitate node returnal in case of disaster i.e server loss
   etcd_1_data:
   etcd_2_data:
   etcd_3_data:
+  # spilo volumes can be stored locally as they'll heal themselves once they rejoin the pack in case of downtime
   spilo_1_data:
   spilo_2_data:
   spilo_3_data:
