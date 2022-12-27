@@ -165,8 +165,8 @@ services:
       PGPOOL_POSTGRES_PASSWORD: pgpool
       PGPOOL_ADMIN_USERNAME: pgpool
       PGPOOL_ADMIN_PASSWORD: pgpool
-      PGPOOL_POSTGRES_CUSTOM_USERS: zabbix,grafana
-      PGPOOL_POSTGRES_CUSTOM_PASSWORDS: EQTL_DB,grafanaDB
+      PGPOOL_POSTGRES_CUSTOM_USERS: user1,user2...     # set which users can have access to pgpool, this has to match with pgbouncer.ini definition
+      PGPOOL_POSTGRES_CUSTOM_PASSWORDS: pass1,pass2... # set password for the users that can have access to pgpool, this has to match with pgbouncer.ini definition
       # Health check failover parameters
       PGPOOL_HEALTH_CHECK_PERIOD: 5
       PGPOOL_HEALTH_CHECK_TIMEOUT: 3
