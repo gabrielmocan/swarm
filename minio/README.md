@@ -1,7 +1,7 @@
 # Prerequisites
 This deployment assumes you have Caddy up an running as reverse proxy for docker swarm.
 
-# Variables needed for deployment:
+# Variables needed for deployment
 ```text
 ACCESS_KEY
 SECRET_KEY
@@ -19,5 +19,5 @@ export MINIO_HOSTNAME_02=MINIO_NODE_02
 export MINIO_HOSTNAME_03=MINIO_NODE_03
 export DOMAIN=example.com
 
-docker stack deploy -c minio_ha.yml minio_ha.yml
+docker stack deploy -c minio_ha.yml minio_ha
 ```
