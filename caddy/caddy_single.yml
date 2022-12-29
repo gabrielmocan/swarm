@@ -34,8 +34,8 @@ services:
     environment:
       CADDY_INGRESS_NETWORKS: caddy
       DOCKER_HOST: tcp://docker-proxy:2375
-     volumes:
-        - caddy_data:/data
+    volumes:
+      - caddy_data:/data
     networks:
       - caddy
       - proxy-network
