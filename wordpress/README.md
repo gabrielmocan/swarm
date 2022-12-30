@@ -1,7 +1,8 @@
 # Wordpress
 This stack will deploy Wordpress with MariaDB and will produce S3 backups at midnight localtime (configurable through labels).
 ## Prerequisites
-This deployment assumes you have **Caddy** and **Cronjobs** up an running as reverse proxy for docker swarm.
+- **Caddy** as reverse proxy for docker swarm. 
+- **Cronjobs** as task scheduler for docker swarm.
 ## Variables needed for deployment
 ```text
 SCOPE
