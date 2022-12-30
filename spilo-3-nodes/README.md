@@ -28,10 +28,10 @@ You need to export them before stack deploy. e.g:
 ```bash
 export SCOPE=spilo
 export TZ=America/Recife
-export S3_ACCESS_KEY=MINIO_NODE_01
-export S3_SECRET_KEY=MINIO_NODE_02
-export S3_ENDPOINT=MINIO_NODE_03
-export S3_BUCKET=example.com
+export S3_ACCESS_KEY=myaccesskey
+export S3_SECRET_KEY=mysecretkey
+export S3_ENDPOINT=s3.example.com
+export S3_BUCKET=my-bucket
 export DB_HOSTNAME_01=DB_NODE_01
 export DB_HOSTNAME_02=DB_NODE_02
 export DB_HOSTNAME_03=DB_NODE_03
