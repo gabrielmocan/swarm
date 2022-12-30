@@ -83,5 +83,3 @@ networks:
   database-network:
   caddy:
     external: true
-  cron:
-    external: true
