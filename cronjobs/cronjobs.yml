@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  swarm-cronjob:
+    image: crazymax/swarm-cronjob
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      TZ: America/Recife
+      LOG_LEVEL: info
+      LOG_JSON: "false"
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+
+  prune-nodes:
+    image: docker
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      mode: global
+      labels:
+        swarm.cronjob.enable: "true"
+        # This label will schedule periodic system prune
+        swarm.cronjob.schedule: "0 0 * * * *"
+        swarm.cronjob.skip-running: "false"
+      restart_policy:
+        condition: none
+    command: ["docker", "system", "prune", "-f"]
