@@ -38,7 +38,7 @@ export DB_HOSTNAME_03=DB_NODE_03
 
 docker stack deploy -c spilo.yml spilo
 ```
-# Deploying for previous backup
+# Bootstraping from previous backup
 In case of disaster, one can bootstrap cluster from previous S3 backup. To do so, uncomment the CLONE_ lines in the beggining of stack file and deploy the stack.
 ```yaml
 x-client_data: &client_data
@@ -50,7 +50,7 @@ x-client_data: &client_data
 - CLONE_SCOPE has to match with the SCOPE that will be bootstraped from;
 - To bootstrap from different timeline, alter CLONE_TIMELINE variable. Default is _latest_.
 # In-place pg_upgrade
-Spilo provides built-in process of doing in-place upgrade. To do so, step up PG_VERSION variable, re-deploy stack and execute the following command on master node:
+Spilo provides built-in process of doing in-place upgrade. To do so, step up PGVERSION variable, re-deploy stack and execute the following command on master node:
 ```bash
 su -c "python3 /scripts/inplace_upgrade.py $NODE_COUNT" postgres
 ```
