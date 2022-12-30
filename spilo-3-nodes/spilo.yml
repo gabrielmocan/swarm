@@ -69,8 +69,7 @@ x-spilo_template: &spilo_template
           host all all all scram-sha-256]
         }
       }"
-  volumes:
-    - spilo_data:/home/postgres/pgdata
+  volumes: &spilo_tmpfs
     - type: tmpfs
       target: /dev/shm
       tmpfs:
@@ -90,21 +89,21 @@ x-deploy_node1: &deploy_node1
   deploy:
     placement:
       constraints:
-        - node.hostname==${DB_HOST_01?Undefined variable}
+        - node.hostname==${DB_HOSTNAME_01?Undefined variable}
 
 # 2nd node deploy template
 x-deploy_node2: &deploy_node2
   deploy:
     placement:
       constraints:
-        - node.hostname==${DB_HOST_02?Undefined variable}
+        - node.hostname==${DB_HOSTNAME_02?Undefined variable}
 
 # 3rd node deploy template
 x-deploy_node3: &deploy_node3
   deploy:
     placement:
       constraints:
-        - node.hostname==${DB_HOST_03?Undefined variable}
+        - node.hostname==${DB_HOSTNAME_03?Undefined variable}
 
 ######################################################## SERVICES DEFINITIONS ########################################################
 
@@ -134,21 +133,24 @@ services:
     <<: *spilo_template
     <<: *deploy_node1
     volumes:
-      - spilo_1_data:/home/postgres/pgdata/pgroot/data
+      <<: *spilo_tmpfs
+      - spilo_1_data:/home/postgres/pgdata
     hostname: spilo1
 
   spilo2:
     <<: *spilo_template
     <<: *deploy_node2
     volumes:
-      - spilo_2_data:/home/postgres/pgdata/pgroot/data
+      <<: *spilo_tmpfs
+      - spilo_2_data:/home/postgres/pgdata
     hostname: spilo2
 
   spilo3:
     <<: *spilo_template
     <<: *deploy_node3
     volumes:
-      - spilo_3_data:/home/postgres/pgdata/pgroot/data    
+      <<: *spilo_tmpfs
+      - spilo_3_data:/home/postgres/pgdata 
     hostname: spilo3
 
   pgpool:
