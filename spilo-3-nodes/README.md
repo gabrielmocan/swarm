@@ -14,6 +14,12 @@ DB_HOSTNAME_03
 - pgbouncer.ini stores database connection strings, edit it accordingly before deployment;
 - userlist.txt stores pgbouncer users which will have access to the databases, this will "proxy" the password, being handy for access control. Edit it accordingly before deployment;
 - if any of those files need to be edited after deployment, simply alter the field "name" in config section and give a new name to the config, that way docker will update configs.
+# pgpool considerations
+- pgpool PGPOOL_POSTGRES_CUSTOM_USERS and PGPOOL_POSTGRES_CUSTOM_PASSWORDS variables has to match the users and passwords created on pgbouncer.ini file.
+```yaml
+PGPOOL_POSTGRES_CUSTOM_USERS: user1,user2...
+PGPOOL_POSTGRES_CUSTOM_PASSWORDS: pass1,pass2...
+```
 ```yaml
 configs:
   pgbouncer-conf:
