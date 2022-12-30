@@ -21,7 +21,7 @@ services:
       mode: global
       labels:
         swarm.cronjob.enable: "true"
-        # This label will schedule periodic system prune
+        # This label will schedule hourly system prune
         swarm.cronjob.schedule: "0 0 * * * *"
         swarm.cronjob.skip-running: "false"
       restart_policy:
