@@ -37,6 +37,8 @@ x-walg_clone: &walg_clone
 # etcd template for 3-node cluster
 x-etcd_template: &etcd_template
   image: gabemocan/swarm:spilo-pg14
+  networks:
+    - etcd-network
   environment:
     <<: *client_data
     ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
@@ -58,9 +60,11 @@ x-spilo_template: &spilo_template
     PGVERSION: "14" # Set PGVERSION, useful for in-place pg_upgrade
     SPILO_PROVIDER: "local"
     ENABLE_PG_MON: "true"
-    INITDB_LOCALE: en_US # Set accordingly 
+    INITDB_LOCALE: en_US # Set accordingly
+    ETCDCTL_ENDPOINTS: http://etcd1:2379,http://etcd2:2379,http://etcd3:2379
+    ETCD_HOSTS: "'etcd1:2379','etcd2:2379','etcd3:2379'"
     SPILO_CONFIGURATION: # Custom pg_hba.conf file
-      "{postgresql: 
+      "{postgresql:
         {pg_hba: [local all all trust,
           local replication standby trust,
           hostssl all all all md5,
@@ -69,12 +73,8 @@ x-spilo_template: &spilo_template
           host all all all scram-sha-256]
         }
       }"
-  volumes: &spilo_tmpfs
-    - type: tmpfs
-      target: /dev/shm
-      tmpfs:
-        size: 512000000 # This will increase shared memory of container to 512MB, a good value for postgres
   networks:
+    - etcd-network
     - pgpool-network
   stop_grace_period: 15m # gives time to container gracefully shutdown in case of SIGTERM
   healthcheck:
@@ -133,7 +133,10 @@ services:
     <<: *spilo_template
     <<: *deploy_node1
     volumes:
-      <<: *spilo_tmpfs
+      - type: tmpfs
+        target: /dev/shm
+        tmpfs:
+          size: 512000000
       - spilo_1_data:/home/postgres/pgdata
     hostname: spilo1
 
@@ -141,7 +144,10 @@ services:
     <<: *spilo_template
     <<: *deploy_node2
     volumes:
-      <<: *spilo_tmpfs
+      - type: tmpfs
+        target: /dev/shm
+        tmpfs:
+          size: 512000000
       - spilo_2_data:/home/postgres/pgdata
     hostname: spilo2
 
@@ -149,7 +155,10 @@ services:
     <<: *spilo_template
     <<: *deploy_node3
     volumes:
-      <<: *spilo_tmpfs
+      - type: tmpfs
+        target: /dev/shm
+        tmpfs:
+          size: 512000000
       - spilo_3_data:/home/postgres/pgdata 
     hostname: spilo3
 
@@ -209,7 +218,7 @@ services:
     healthcheck:
       test: pg_isready -h localhost -U pgbouncer || exit 1
       interval: 30s
-      timeout: 3s
+      timeout: 5s
     deploy:
       mode: global
       update_config:
@@ -235,6 +244,7 @@ volumes:
   spilo_3_data:
 
 networks:
+  etcd-network:
   pgpool-network:
   # this external network will be used by apps/clients to connect to the postgres cluster
   pgbouncer-network:
