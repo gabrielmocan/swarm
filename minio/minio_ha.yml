@@ -53,7 +53,7 @@ x-deploy_node03: &deploy_node03
 services:
   # Globally deployed HAproxy will ensure high availability to services
   haproxy-minio-dashboard:
-    image: gabemocan/swarm:haproxy-2.6 # add "-arm64" at the end if using arm64
+    image: gabemocan/swarm:haproxy-2.7.1
     environment:
       <<: *haproxy-envs
       HAPROXY_LISTEN_PORT: 9001
@@ -73,7 +73,7 @@ services:
         caddy.reverse_proxy: "{{upstreams 9001}}"
 
   haproxy-minio-api:
-    image: gabemocan/swarm:haproxy-2.6 # add "-arm64" at the end if using arm64
+    image: gabemocan/swarm:haproxy-2.7.1
     environment:
       <<: *haproxy-envs
       HAPROXY_LISTEN_PORT: 9000

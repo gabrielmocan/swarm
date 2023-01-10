@@ -1,4 +1,4 @@
-FROM haproxy:2.6
+FROM haproxy:2.7.1
 
 COPY docker-entrypoint.sh /usr/local/bin/
 
