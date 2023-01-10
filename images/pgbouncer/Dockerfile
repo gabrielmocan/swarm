@@ -1,5 +1,16 @@
 FROM bitnami/pgbouncer:1
 
-# This bin and lib will enable healthchecks using pg_isready
-COPY ./pg_isready/pg_isready /opt/bitnami/postgresql/bin/
-COPY ./pg_isready/libpq.so.5.15 /usr/lib/x86_64-linux-gnu/libpq.so.5
+USER 0
+
+ARG APT_FLAGS_COMMON="-qq -y"
+ARG APT_FLAGS_PERSISTANT="${APT_FLAGS_COMMON} --no-install-recommends"
+
+# Installs postgresql-client to add pg_isready to the image
+RUN apt ${APT_FLAGS_COMMON} update &&     \
+    apt install ${APT_FLAGS_PERSISTANT}   \
+        postgresql-client 1>/dev/null &&  \
+    apt ${APT_FLAGS_COMMON} autoremove && \
+    apt ${APT_FLAGS_COMMON} clean &&      \
+    rm -rf /var/lib/apt/lists/*
+
+USER 1001
