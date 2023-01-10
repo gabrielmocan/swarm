@@ -163,7 +163,7 @@ services:
     hostname: spilo3
 
   pgpool:
-    image: gabemocan/swarm:pgpool-4
+    image: gabemocan/swarm:pgpool-4.4.1
     environment:
       # Backend definition
       PGPOOL_BACKEND_NODES: 0:spilo1:5432,1:spilo2:5432,2:spilo3:5432
@@ -203,7 +203,7 @@ services:
         order: start-first
 
   pgbouncer:
-    image: gabemocan/swarm:pgbouncer-1
+    image: gabemocan/swarm:pgbouncer-1.18.0
     configs:
       - source: pgbouncer-conf
         target: /bitnami/pgbouncer/conf/pgbouncer.ini
