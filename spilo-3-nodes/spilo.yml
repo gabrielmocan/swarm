@@ -36,11 +36,11 @@ x-walg_clone: &walg_clone
 
 # etcd template for 3-node cluster
 x-etcd_template: &etcd_template
-  image: gabemocan/swarm:spilo-pg14
+  image: ghcr.io/zalando/spilo-15:2.1-p9
   networks:
     - etcd-network
   environment:
-    <<: *client_data
+    # ETCD_UNSUPPORTED_ARCH: arm64 # uncomment if using arm64 arch
     ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
     ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
     ETCD_ADVERTISE_CLIENT_URLS: http://etcd1:2379,http://etcd2:2379,http://etcd3:2379
@@ -50,7 +50,7 @@ x-etcd_template: &etcd_template
 
 # spilo template for 3-node cluster
 x-spilo_template: &spilo_template
-  image: gabemocan/swarm:spilo-pg14
+  image: ghcr.io/zalando/spilo-15:2.1-p9
   cap_add:
     - SYS_NICE  # This adds NICE capabilities to container in order to smoothen process consumption during backup
   environment:
